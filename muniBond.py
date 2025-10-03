@@ -63,6 +63,7 @@ class muniBond:
         self.nextCouponDate = bref.nextCouponDate.date() if not pd.isna(bref.nextCouponDate) else None
         self.penultCouponDate = bref.lastPeriodAccrualDate.date() if not pd.isna(bref.lastPeriodAccrualDate) else None
         self.couponType = bref.couponType if not pd.isna(bref.couponType) else None
+        # self.interestFrequency as a column in the dataframe or defaultly set as Semiannually
         self.intFreqDesc = bref.interestFrequency if (not self.couponType == 'Zero coupon') else 'Semiannually'
         self.intFreq = getIntFreq(self.intFreqDesc)
         self.intPeriodMonths = int(12.0 / self.intFreq) if self.intFreq is not None else None
@@ -124,7 +125,25 @@ class muniBond:
             self.calcPrevCouponDate = current
             self.calcNextCouponDate = min([cf['date'] for cf in self.cashflows['coupon'] if cf['date']>settleDate])
         self.cashflows['coupon'].sort(key=lambda x: x['date'])
-    
+
+    # region Example cashflows structure
+    # Example cashflows for a bond with 5% coupon, semiannual payments, maturing on 2027-05-15, and settle date of 2025-03-01:
+    # {
+    #     'coupon': [
+    #         {'date': datetime.date(2025, 5, 15), 'amount': 2.5, 'type': 'coupon'},   # 5%/2 = 2.5%
+    #         {'date': datetime.date(2025, 11, 15), 'amount': 2.5, 'type': 'coupon'},
+    #         {'date': datetime.date(2026, 5, 15), 'amount': 2.5, 'type': 'coupon'},
+    #         {'date': datetime.date(2026, 11, 15), 'amount': 2.5, 'type': 'coupon'},
+    #         {'date': datetime.date(2027, 5, 15), 'amount': 2.5, 'type': 'coupon'},
+    #     ],
+    #     'principal': {
+    #         'date': datetime.date(2027, 5, 15),  # Maturity date
+    #         'amount': 100.0,                     # Face value repayment
+    #         'type': 'principal'
+    #     }
+    # }
+    # endregion
+
     def coupon_count(self):
         return len(self.cashflows['coupon'])
 
@@ -174,10 +193,12 @@ class muniBond:
         yld = 0.0
         if settleDate is None:
             if self.currentCalcSettleDate is None:
-                settleDate = bmaCalendar.getNthBusinessDay(datetime.now().date(),bmaCalendar.regSettleDays)
+                settleDate = bmaCalendar.getNthBusinessDay(datetime.now().date(),bmaCalendar.regSettleDays) 
+                # regSettleDate is the next business day plus the regular settlement days
             else: 
                 settleDate = self.currentCalcSettleDate
         self.generate_cashflows(settleDate,workout)
+        # different initial guess based on price being premium or discount
         if p>100:
             yld = newton(bond_price_root,self.coupon-0.0001,tol=0.0001,maxiter=100,args=(p,self,settleDate,))
         else: 
@@ -186,14 +207,14 @@ class muniBond:
 
     def ytw(self,p,settleDate=None):
         return min([self.yieldWorkout(p,w,settleDate) for w in self.workouts])
-
+# DV01 measures how much the bond price will increase if the market interest rate decreases by 1 basis point.
     def dv01_px(self,p,settleDate=None):
         yld = self.ytw(p,settleDate)
         blipYld = yld - 0.01
         blipPx = self.price(blipYld/100.0,settleDate)
         dv01 = blipPx - p
         return dv01
-
+# empty function placeholder
     def dv01_yld(self,y,settleDate=None):
         return
 

@@ -1,12 +1,12 @@
 # Municipal Bond System Variables Codebook
 
-## 📋 Variable Dictionary for muniBond.py
+## Variable Dictionary for muniBond.py
 
 This document provides a comprehensive mapping of all variables used in the Municipal Bond pricing and risk management system.
 
 ---
 
-## 🔑 Core Identifiers
+## Core Identifiers
 
 | Variable | Type | Description |
 |----------|------|-------------|
@@ -17,7 +17,7 @@ This document provides a comprehensive mapping of all variables used in the Muni
 
 ---
 
-## 📅 Date Variables
+## Date Variables
 
 ### Maturity & Lifecycle Dates
 | Variable | Type | Description |
@@ -55,7 +55,7 @@ This document provides a comprehensive mapping of all variables used in the Muni
 
 ---
 
-## 💰 Financial Variables
+## Financial Variables
 
 ### Coupon & Interest
 | Variable | Type | Description |
@@ -86,7 +86,7 @@ This document provides a comprehensive mapping of all variables used in the Muni
 
 ---
 
-## 📊 Rating Variables
+## Rating Variables
 
 ### S&P Ratings
 | Variable | Type | Description |
@@ -144,7 +144,7 @@ This document provides a comprehensive mapping of all variables used in the Muni
 
 ---
 
-## 🎯 Feature Flags & Options
+## Feature Flags & Options
 
 ### Call/Put Features
 | Variable | Type | Description |
@@ -160,7 +160,7 @@ This document provides a comprehensive mapping of all variables used in the Muni
 
 ---
 
-## 💼 Data Structures
+## Data Structures
 
 ### Workout Scenarios
 | Variable | Type | Description |
@@ -185,7 +185,7 @@ This document provides a comprehensive mapping of all variables used in the Muni
 
 ---
 
-## 🏷️ Classification Variables
+## Classification Variables
 
 ### Rating Buckets
 | Variable | Type | Description |
@@ -210,7 +210,7 @@ This document provides a comprehensive mapping of all variables used in the Muni
 
 ---
 
-## 🔢 Mathematical Functions & Constants
+## Mathematical Functions & Constants
 
 ### MSRB Functions
 | Function | Description |
@@ -230,7 +230,7 @@ This document provides a comprehensive mapping of all variables used in the Muni
 
 ---
 
-## 📊 Reference Data Variables
+## Reference Data Variables
 
 ### Bond Characteristics
 | Variable | Type | Description |
@@ -254,7 +254,7 @@ This document provides a comprehensive mapping of all variables used in the Muni
 
 ---
 
-## 🎯 Eligibility & Compliance Codes
+## Eligibility & Compliance Codes
 
 | Code | Meaning |
 |------|---------|
