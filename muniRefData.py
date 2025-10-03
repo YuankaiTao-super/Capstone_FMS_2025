@@ -3,7 +3,7 @@
 import pandas as pd 
 
 def getRefDataPath():
-    return '//fmsops/users/Trading/ALGO/'
+    return './'
 
 def getSecMasterConfig():
     return pd.read_csv(getRefDataPath() + 'securityMasterConfig.csv')
@@ -47,7 +47,7 @@ def getRawMasterDataTypes():
 def getEnrichedMasterDataTypes():
     dtypes = {}
     cfg = getEnrichedMasterConfig()
-    for index,row in cfg.iterrows():
+    for index, row in cfg.iterrows():
         dtypes[row.fieldName] = getFieldDataType(row.qTypeChar,row.boolField)
     return dtypes
 

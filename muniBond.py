@@ -169,7 +169,7 @@ class muniBond:
         else:
             prc = min([self.bond_price_periodic(y,w,settleDate) for w in self.workouts])
         return prc
-    
+   
     def yieldWorkout(self,p,workout,settleDate=None):
         yld = 0.0
         if settleDate is None:
