@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import os
 import pandas as pd 
 
 def getRefDataPath():
@@ -54,8 +55,12 @@ def getEnrichedMasterDataTypes():
 def getRawMasterPath():
     return getRefDataPath() + 'muniSecurityMasterCurrent.csv'
 
+# For testing purposes, use a smaller sample file if the code is running in GitHub Actions
 def getEnrichedMasterPath():
-    return  getRefDataPath() + 'muniSecMaster.csv'
+    if os.environ.get('GITHUB_ACTIONS') == 'true':
+        return getRefDataPath() + 'test_sample.csv'
+    else:
+        return  getRefDataPath() + 'muniSecMaster.csv'
 
 def getRawMasterHeader():
     cfg = getRawMasterConfig()
