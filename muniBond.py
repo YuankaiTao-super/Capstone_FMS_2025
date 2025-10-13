@@ -189,8 +189,10 @@ class muniBond:
             prc = min([self.bond_price_periodic(y,w,settleDate) for w in self.workouts])
         return prc
    
-    def yieldWorkout(self,p,workout,settleDate=None):
+    def yieldWorkout(self,p,workout,settleDate=None,overrideGuess=None):
         yld = 0.0
+        defaultGuess = self.coupon - 0.0001 if p>100 else self.coupon + 0.0001
+        guess = overrideGuess if overrideGuess is not None else defaultGuess
         if settleDate is None:
             if self.currentCalcSettleDate is None:
                 settleDate = bmaCalendar.getNthBusinessDay(datetime.now().date(),bmaCalendar.regSettleDays) 
@@ -200,13 +202,13 @@ class muniBond:
         self.generate_cashflows(settleDate,workout)
         # different initial guess based on price being premium or discount
         if p>100:
-            yld = newton(bond_price_root,self.coupon-0.0001,tol=0.0001,maxiter=100,args=(p,self,settleDate,))
+            yld = newton(bond_price_root,guess,tol=0.0001,maxiter=100,args=(p,self,settleDate,))
         else: 
-            yld = newton(bond_price_root,self.coupon+0.0001,tol=0.0001,maxiter=100,args=(p,self,settleDate,))
+            yld = newton(bond_price_root,guess,tol=0.0001,maxiter=100,args=(p,self,settleDate,))
         return msrbRoundYield(100*yld)
 
-    def ytw(self,p,settleDate=None):
-        return min([self.yieldWorkout(p,w,settleDate) for w in self.workouts])
+    def ytw(self,p,settleDate=None,overrideGuess=None):
+        return min([self.yieldWorkout(p,w,settleDate,overrideGuess) for w in self.workouts])
 # DV01 measures how much the bond price will increase if the market interest rate decreases by 1 basis point.
     def dv01_px(self,p,settleDate=None):
         yld = self.ytw(p,settleDate)

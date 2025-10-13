@@ -21,9 +21,9 @@ def ytw_test():
 
     start = time.time()
     ytw = bond.ytw(price)
-    yield_time = (time.time() - start) * 1000
+    yield_time = (time.time() - start) * 1_000_000
 
-    print(f"calculation time: {yield_time:.1f}ms")
+    print(f"calculation time: {yield_time:.1f}us")
     print(f"YTW result: {ytw:.3f}%")
 
 if __name__ == "__main__":

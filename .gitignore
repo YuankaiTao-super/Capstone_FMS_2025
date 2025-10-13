@@ -209,3 +209,7 @@ __marimo__/
 # Ignore all .csv files
 # *.csv
 muniSecMaster.csv
+
+/temp
+
+*.psv
