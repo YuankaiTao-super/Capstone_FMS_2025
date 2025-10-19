@@ -25,8 +25,8 @@ ax1.set_ylabel('Calculation Time (us)')
 ax1.grid(True, alpha=0.3)
 
 # 2. Histogram - Distribution of Calculation Times
-ax2.hist(df['calc_time_us'], bins=50, color='lightgreen', alpha=0.7, edgecolor='black')
-ax2.set_title('Histogram of Calculation Time Distribution')
+ax2.hist(df['calc_time_us'], bins=50, color='blue', alpha=0.7, edgecolor='black')
+ax2.set_title('Histogram of Calculation Time Distribution W Initial Guess')
 ax2.set_xlabel('Calculation Time (us)')
 ax2.set_ylabel('Frequency')
 ax2.legend()
@@ -46,7 +46,7 @@ for idx, row in top_slow.iterrows():
 plt.figure(figsize=(10, 6))
 scatter = plt.scatter(df['ytw'], df['calc_time_us'], alpha=0.6, c=df['calc_time_us'], 
                      cmap='viridis', s=20)
-plt.title('YTW vs Calculation Time')
+plt.title('YTW vs Calculation Time W Initial Guess')
 plt.xlabel('YTW (%)')
 plt.ylabel('Calculation Time (us)')
 plt.colorbar(scatter, label='Calculation Time (us)')
@@ -55,4 +55,5 @@ plt.show()
 
 plt.savefig('./temp/plot_ytw_calc_w_guess.png', dpi=300, bbox_inches='tight')
 
+print(f"\n=== Top 5 Bonds by YTW with Initial Guess ===")
 print(df['ytw'].sort_values(ascending=False).head(5))

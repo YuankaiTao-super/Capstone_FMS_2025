@@ -18,7 +18,7 @@ def process_psv_data_guess():
     """
     num of samples -> 10_000
     """
-    df = pd.read_csv('./ice_cep_prices_20251002_cleaned.psv', sep='|')
+    df = pd.read_csv('./temp/ice_cep_prices_20251002_cleaned.psv', sep='|')
     print(len(df))
 
     df_sample = df.sample(n=10_000, random_state=42)
@@ -50,10 +50,12 @@ def process_psv_data_guess():
             bond = muniBond.muniBond(cusip)
 
             overrideGuess = yield_guess/100 if not np.isnan(yield_guess) else None
+            
             # calc time
-            start_time = time.time()
+            start = time.perf_counter_ns()
             ytw = bond.ytw(price, None, overrideGuess)
-            calc_time = (time.time() - start_time) * 1_000  # -> ms
+            end = time.perf_counter_ns()
+            calc_time = (end - start)
 
             # result_cols
             result = {
@@ -61,7 +63,7 @@ def process_psv_data_guess():
                 'bidPx': bid_px,
                 'truncated_price': price,
                 'bidYield': yield_guess,
-                'calc_time_ms': calc_time,
+                'calc_time_ns': calc_time,
                 'ytw': ytw
             }
             
@@ -91,22 +93,22 @@ def process_psv_data_guess():
     results_df = pd.DataFrame(results)
     
     # stats summary
-    avg_calc_time = results_df['calc_time_ms'].mean()
-    max_calc_time = results_df['calc_time_ms'].max()
-    min_calc_time = results_df['calc_time_ms'].min()
+    avg_calc_time = results_df['calc_time_ns'].mean()
+    max_calc_time = results_df['calc_time_ns'].max()
+    min_calc_time = results_df['calc_time_ns'].min()
 
     print(f"\n===== stats summary =====")
     print(f"N: {len(results_df)}")
-    print(f"avg time with guess: {avg_calc_time:.2f}ms")
-    print(f"max time with guess: {max_calc_time:.2f}ms")
-    print(f"min time with guess: {min_calc_time:.2f}ms")
+    print(f"avg time with guess: {avg_calc_time:.2f}ns")
+    print(f"max time with guess: {max_calc_time:.2f}ns")
+    print(f"min time with guess: {min_calc_time:.2f}ns")
 
-    results_df.to_csv('./ytw_calc_times_guess.csv', index=False)
+    results_df.to_csv('./temp/ytw_calc_times_guess.csv', index=False)
     print("\n result file saved")
 
     error_df = pd.DataFrame(blacklist_cusips)
     print(f"Errors: {len(error_df)}")
-    error_df.to_csv('./ytw_calc_blackList_guess.csv', index=False)
+    error_df.to_csv('./temp/ytw_calc_blackList_guess.csv', index=False)
     print("\n blacklist file saved")
     
     return results_df

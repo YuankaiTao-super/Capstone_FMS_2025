@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from unittest import result
 import bmaCalendar
 import muniRefData
 from math import floor
@@ -8,6 +9,9 @@ import pandas as pd
 from datetime import datetime
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
+import time
+
+_timing_data = {}
 
 secMaster = muniRefData.loadEnrichedMaster(muniRefData.getEnrichedMasterPath())
 specialRefundTypes = ['Called','Called by muni-forward','Pre-refunded','Escrowed to maturity','ETM by muni-forward']
@@ -40,6 +44,8 @@ def reloadHardBlocks():
 
 class muniBond:
     def __init__(self,cusip):
+        init_start = time.time()
+
         self.cusip = cusip
         bref = secMaster.loc[cusip]
         self.maturityDate = None if pd.isna(bref.maturityDate) else bref.maturityDate.date()
@@ -107,10 +113,16 @@ class muniBond:
         self.cashflows = dict.fromkeys(['coupon','principal'])
         self.cashflows['coupon'] = []
 
+        init_end = time.time()
+        init_elapsed = (init_end - init_start) * 1_000 # convert to ms
+        key = f"{self.cusip}_init"
+        _timing_data[key] = _timing_data.get(key, 0) + init_elapsed
+
     def numCouponPeriods(self,startDate,endDate):
         return msrbDayCount(startDate, endDate)/(self.daysInYear/self.intFreq)
 
     def generate_cashflows(self,settleDate,workout):
+        
         self.currentCalcSettleDate = settleDate
         self.cashflows = dict.fromkeys(['coupon','principal'])
         self.cashflows['coupon'] = []
@@ -157,7 +169,13 @@ class muniBond:
         return msrbRoundPrice(100.0*P)
     
     def bond_price_periodic(self,y,workout,settleDate):
+        gen_cf_start = time.time()
         self.generate_cashflows(settleDate, workout)
+        gen_cf_end = time.time()
+        gen_cf_elapsed = (gen_cf_end - gen_cf_start) * 1_000 # convert to ms
+        key = f"{self.cusip}_generate_cashflows"
+        _timing_data[key] = _timing_data.get(key, 0) + gen_cf_elapsed
+
         A = msrbDayCount(self.calcPrevCouponDate,settleDate)
         B = self.daysInYear
         E = msrbDayCount(self.calcPrevCouponDate,self.calcNextCouponDate)
@@ -188,7 +206,7 @@ class muniBond:
         else:
             prc = min([self.bond_price_periodic(y,w,settleDate) for w in self.workouts])
         return prc
-   
+    
     def yieldWorkout(self,p,workout,settleDate=None,overrideGuess=None):
         yld = 0.0
         defaultGuess = self.coupon - 0.0001 if p>100 else self.coupon + 0.0001
@@ -199,16 +217,24 @@ class muniBond:
                 # regSettleDate is the next business day plus the regular settlement days
             else: 
                 settleDate = self.currentCalcSettleDate
-        self.generate_cashflows(settleDate,workout)
-        # different initial guess based on price being premium or discount
+            
+        newton_start = time.time()
         if p>100:
             yld = newton(bond_price_root,guess,tol=0.0001,maxiter=100,args=(p,self,settleDate,))
         else: 
             yld = newton(bond_price_root,guess,tol=0.0001,maxiter=100,args=(p,self,settleDate,))
+        
+        newton_end = time.time()
+        newton_elapsed = (newton_end - newton_start) * 1_000 # convert to ms
+
+        key = f"{self.cusip}_newton_solver"
+        _timing_data[key] = _timing_data.get(key, 0) + newton_elapsed
+
         return msrbRoundYield(100*yld)
 
     def ytw(self,p,settleDate=None,overrideGuess=None):
         return min([self.yieldWorkout(p,w,settleDate,overrideGuess) for w in self.workouts])
+
 # DV01 measures how much the bond price will increase if the market interest rate decreases by 1 basis point.
     def dv01_px(self,p,settleDate=None):
         yld = self.ytw(p,settleDate)
@@ -222,6 +248,18 @@ class muniBond:
 
 def bond_price_root(y,p,bond,settleDate):
     return bond.price(y,settleDate)-p
+
+def clear_timing_data():
+    global _timing_data
+    _timing_data.clear()
+    
+def get_cusip_timing(cusip):
+    init_key = f"{cusip}_init"
+    cf_key = f"{cusip}_generate_cashflows"
+    newton_key = f"{cusip}_newton_solver"
+    return {'init_ms': _timing_data.get(init_key, 0), 
+            'generate_cashflows_ms': _timing_data.get(cf_key, 0),
+            'newton_solver_ms': _timing_data.get(newton_key, 0)}
 
 def getIntFreq(ifd):
     mapper = {
@@ -668,4 +706,3 @@ def getAlgoRefAqEligibility(cusip):
     if refdata['stateCode'] in blockedStates:
         eligCode = 'BLOCKED_STATE'
     return eligCode
-
