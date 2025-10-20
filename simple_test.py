@@ -12,9 +12,9 @@ import pstats
 # pick a random bond from the database
 random.seed(42)
 random_index = random.randint(0, len(muniBond.secMaster.index) - 1)
-# cusip = list(muniBond.secMaster.index)[random_index]
+cusip = list(muniBond.secMaster.index)[random_index]
 
-cusip = '79130MUE6'
+# cusip = '79130MUE6'
 
 print(f"test CUSIP: {cusip}")
 price = 105.0

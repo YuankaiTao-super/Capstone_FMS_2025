@@ -112,6 +112,7 @@ class muniBond:
         self.calcNextCouponDate = None
         self.cashflows = dict.fromkeys(['coupon','principal'])
         self.cashflows['coupon'] = []
+        self._cashflow_cache = {}
 
         init_end = time.time()
         init_elapsed = (init_end - init_start) * 1_000 # convert to ms
@@ -122,7 +123,20 @@ class muniBond:
         return msrbDayCount(startDate, endDate)/(self.daysInYear/self.intFreq)
 
     def generate_cashflows(self,settleDate,workout):
+        # Create cache key from parameters that determine the cashflows
+        cache_key = (settleDate, workout['date'], workout.get('price', None))
         
+        # Check if we've already generated this exact cashflow
+        if cache_key in self._cashflow_cache:
+            # Restore cached data instead of regenerating
+            cached = self._cashflow_cache[cache_key]
+            self.currentCalcSettleDate = cached['settleDate']
+            self.cashflows = cached['cashflows']
+            self.calcPrevCouponDate = cached['prevCoupon']
+            self.calcNextCouponDate = cached['nextCoupon']
+            return  # Early return - no regeneration needed
+        
+        # Generate cashflows (only executed if not cached)
         self.currentCalcSettleDate = settleDate
         self.cashflows = dict.fromkeys(['coupon','principal'])
         self.cashflows['coupon'] = []
@@ -137,6 +151,14 @@ class muniBond:
             self.calcPrevCouponDate = current
             self.calcNextCouponDate = min([cf['date'] for cf in self.cashflows['coupon'] if cf['date']>settleDate])
         self.cashflows['coupon'].sort(key=lambda x: x['date'])
+        
+        # Cache the generated cashflows for future use
+        self._cashflow_cache[cache_key] = {
+            'settleDate': self.currentCalcSettleDate,
+            'cashflows': self.cashflows.copy(),
+            'prevCoupon': self.calcPrevCouponDate,
+            'nextCoupon': self.calcNextCouponDate
+        }
 
     # region Example cashflows structure
     # Example cashflows for a bond with 5% coupon, semiannual payments, maturing on 2027-05-15, and settle date of 2025-03-01:
