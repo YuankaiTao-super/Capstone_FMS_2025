@@ -112,6 +112,7 @@ class muniBond:
         self.calcNextCouponDate = None
         self.cashflows = dict.fromkeys(['coupon','principal'])
         self.cashflows['coupon'] = []
+        
         self._cashflow_cache = {}
 
         init_end = time.time()
@@ -123,20 +124,17 @@ class muniBond:
         return msrbDayCount(startDate, endDate)/(self.daysInYear/self.intFreq)
 
     def generate_cashflows(self,settleDate,workout):
-        # Create cache key from parameters that determine the cashflows
         cache_key = (settleDate, workout['date'], workout.get('price', None))
         
-        # Check if we've already generated this exact cashflow
         if cache_key in self._cashflow_cache:
-            # Restore cached data instead of regenerating
+            # Restore cached data
             cached = self._cashflow_cache[cache_key]
             self.currentCalcSettleDate = cached['settleDate']
             self.cashflows = cached['cashflows']
             self.calcPrevCouponDate = cached['prevCoupon']
             self.calcNextCouponDate = cached['nextCoupon']
-            return  # Early return - no regeneration needed
+            return
         
-        # Generate cashflows (only executed if not cached)
         self.currentCalcSettleDate = settleDate
         self.cashflows = dict.fromkeys(['coupon','principal'])
         self.cashflows['coupon'] = []
@@ -152,7 +150,7 @@ class muniBond:
             self.calcNextCouponDate = min([cf['date'] for cf in self.cashflows['coupon'] if cf['date']>settleDate])
         self.cashflows['coupon'].sort(key=lambda x: x['date'])
         
-        # Cache the generated cashflows for future use
+        # store the cached data
         self._cashflow_cache[cache_key] = {
             'settleDate': self.currentCalcSettleDate,
             'cashflows': self.cashflows.copy(),
