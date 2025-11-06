@@ -5,7 +5,6 @@ created: 2024-10-10
 completed: In progress
 issue #3, #4
 """
-# performance test for muniBond module using modified price from PSV data
 import time
 import pandas as pd
 import numpy as np
@@ -13,6 +12,22 @@ import gc
 from contextlib import contextmanager
 import muniBond
 
+BOND = {}
+
+def get_bond(cusip):
+    if cusip not in BOND:
+        BOND[cusip] = muniBond.muniBond(cusip)
+    return BOND[cusip]
+
+def warm_up_numba():
+    """Pre-compile Numba with cusip warm-up"""
+    print("Warming up...")
+    
+    warm_cusip = '762244KL4'
+    warm_bond = muniBond.muniBond(warm_cusip)
+    _ = warm_bond.ytw(100.0)
+
+    print("Warm-up complete!") 
 
 def process_psv_data():
     """
@@ -23,6 +38,9 @@ def process_psv_data():
 
     df_sample = df.sample(n=10_000, random_state=42)
     
+    muniBond.clear_timing_data()
+
+    warm_up_numba()
     muniBond.clear_timing_data()
 
     results = []
@@ -48,14 +66,13 @@ def process_psv_data():
             price = int(bid_px)  # truncate decimal
             
             # create bond object
-            bond = muniBond.muniBond(cusip)
+            bond = get_bond(cusip)
 
             # calc time
             start_time = time.time()
             ytw = bond.ytw(price)
             end_time = time.time()
-            elapsed = end_time - start_time
-            calc_time = elapsed * 1000  # -> ms
+            calc_time = (end_time - start_time) * 1000  # -> ms
 
             timing_details = muniBond.get_cusip_timing(cusip)
 
@@ -78,10 +95,10 @@ def process_psv_data():
             
             results.append(result)
             
-            if len(results) % 100 == 0:
+            if len(results) % 1000 == 0:
                 print(f"processing:{len(results)}")
                 print(f"errors:{len(blacklist_cusips)}")
-                gc.collect()
+                # gc.collect()
 
         except Exception as e:
             error_info = {
@@ -96,47 +113,30 @@ def process_psv_data():
 
     results_df = pd.DataFrame(results)
     
-    # stats summary
-    avg_calc_time = results_df['calc_time_ms'].mean()
-    max_calc_time = results_df['calc_time_ms'].max()
-    min_calc_time = results_df['calc_time_ms'].min()
-
-    avg_init_time = results_df['init_ms'].mean()
-    max_init_time = results_df['init_ms'].max()
-    min_init_time = results_df['init_ms'].min()
-
-    avg_cf_time = results_df['generate_cashflows_ms'].mean()
-    max_cf_time = results_df['generate_cashflows_ms'].max()
-    min_cf_time = results_df['generate_cashflows_ms'].min()
-
-    avg_newton_time = results_df['newton_solver_ms'].mean()
-    max_newton_time = results_df['newton_solver_ms'].max()
-    min_newton_time = results_df['newton_solver_ms'].min()
-
-    print(f"\n===== stats summary =====")
-    print(f"N: {len(results_df)}")
-    print(f"avg calc time: {avg_calc_time:.2f}ms")
-    print(f"max time: {max_calc_time:.2f}ms")
-    print(f"min time: {min_calc_time:.2f}ms")
-
-    print(f"\n===== init stats summary =====")
-    print(f"avg init time: {avg_init_time:.2f}ms")
-    print(f"max init time: {max_init_time:.2f}ms")
-    print(f"min init time: {min_init_time:.2f}ms")
-
-    print(f"\n===== cf stats summary =====")
-    print(f"avg generate_cashflows time: {avg_cf_time:.2f}ms")
-    print(f"max generate_cashflows time: {max_cf_time:.2f}ms")
-    print(f"min generate_cashflows time: {min_cf_time:.2f}ms")
-
-    print(f"\n===== ns stats summary =====")
-    print(f"avg newton_solver time: {avg_newton_time:.2f}ms")
-    print(f"max newton_solver time: {max_newton_time:.2f}ms")
-    print(f"min newton_solver time: {min_newton_time:.2f}ms")
+    print(f"\n===== SUMMARY =====")
+    print(f"Bonds processed: {len(results_df)}")
+    print(f"Unique bonds cached: {len(BOND)}")
+    print(f"\nTotal Calculation Time:")
+    print(f"  Mean: {results_df['calc_time_ms'].mean():.4f}ms")
+    print(f"  Median: {results_df['calc_time_ms'].median():.4f}ms")
+    print(f"  Max: {results_df['calc_time_ms'].max():.4f}ms")
+    print(f"  Min: {results_df['calc_time_ms'].min():.4f}ms")
+    
+    print(f"\nInit Time:")
+    print(f"  Mean: {results_df['init_ms'].mean():.4f}ms")
+    print(f"  Median: {results_df['init_ms'].median():.4f}ms")
+    print(f"  Max: {results_df['init_ms'].max():.4f}ms")
+    print(f"  Min: {results_df['init_ms'].min():.4f}ms")
+    
+    print(f"\nNewton Solver Time:")
+    print(f"  Mean: {results_df['newton_solver_ms'].mean():.4f}ms")
+    print(f"  Median: {results_df['newton_solver_ms'].median():.4f}ms")
+    print(f"  Max: {results_df['newton_solver_ms'].max():.4f}ms")
+    print(f"  Min: {results_df['newton_solver_ms'].min():.4f}ms")
 
     # save timing files
-    # results_df.to_csv('./ytw_calc_times.csv', index=False)
-    # print("\n result file saved")
+    results_df.to_csv('./temp/ytw_calc_times.csv', index=False)
+    print("\n result file saved")
 
     # save error files
     # error_df = pd.DataFrame(blacklist_cusips)

@@ -1,3 +1,10 @@
+"""
+author: @yuankai
+created: 2024-10-15
+completed: 2024-10-15
+Note: this is a benchmark optimized Newton solver using Numba
+"""
+
 import functools
 import numpy as np
 from numba import njit

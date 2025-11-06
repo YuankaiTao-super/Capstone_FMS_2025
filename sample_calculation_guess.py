@@ -1,9 +1,11 @@
 #!/usr/bin/python3
 """
+***Deprecated: no guess in the current muniBond module
 author: @yuankai
 created: 2024-10-10
 completed: In progress
 issue #3, #4
+this version uses an initial guess from PSV data for YTW calculation
 """
 # performance test for muniBond module using modified price from PSV data
 import time

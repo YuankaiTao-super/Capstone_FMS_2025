@@ -10,6 +10,8 @@ from datetime import datetime
 from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 import time
+import numpy as np
+from numba import njit
 
 _timing_data = {}
 
@@ -192,26 +194,18 @@ class muniBond:
         gen_cf_start = time.time()
         self.generate_cashflows(settleDate, workout)
         gen_cf_end = time.time()
-        gen_cf_elapsed = (gen_cf_end - gen_cf_start) * 1_000 # convert to ms
+        gen_cf_elapsed = (gen_cf_end - gen_cf_start) * 1_000
         key = f"{self.cusip}_generate_cashflows"
         _timing_data[key] = _timing_data.get(key, 0) + gen_cf_elapsed
 
-        A = msrbDayCount(self.calcPrevCouponDate,settleDate)
-        B = self.daysInYear
-        E = msrbDayCount(self.calcPrevCouponDate,self.calcNextCouponDate)
-        M = self.intFreq
+        A = float(msrbDayCount(self.calcPrevCouponDate,settleDate))
+        B = float(self.daysInYear)
+        E = float(msrbDayCount(self.calcPrevCouponDate,self.calcNextCouponDate))
+        M = float(self.intFreq)
         N = self.coupon_count()
-        R = self.coupon
-        RV = workout['price']
-        if N<=1:
-            P = ((RV/100.0)+(R/M))/(1+((E-A)/E)*(y/M)) - (R*A/B)
-            P = P*100.0
-        else:
-            PV = 0.0
-            for k in range(1,N+1):
-                df = discountFactor(y, M, k-1+((E-A)/E))
-                PV = PV + df*self.cashflows['coupon'][k-1]['amount']
-            P = RV*discountFactor(y, M, N-1+((E-A)/E)) + PV - (100.0*R*A/B)
+        R = float(self.coupon)
+        RV = float(workout['price'])
+        P = bond_price_periodic_core(y, RV, N, R, M, E, A, B)
         return msrbRoundPrice(P)
 
     def price(self,y,settleDate=None):
@@ -233,19 +227,24 @@ class muniBond:
         guess = overrideGuess if overrideGuess is not None else defaultGuess
         if settleDate is None:
             if self.currentCalcSettleDate is None:
-                settleDate = bmaCalendar.getNthBusinessDay(datetime.now().date(),bmaCalendar.regSettleDays) 
-                # regSettleDate is the next business day plus the regular settlement days
+                settleDate = bmaCalendar.getNthBusinessDay(datetime.now().date(),bmaCalendar.regSettleDays)
             else: 
                 settleDate = self.currentCalcSettleDate
-            
-        newton_start = time.time()
-        if p>100:
-            yld = newton(bond_price_root,guess,tol=0.0001,maxiter=100,args=(p,self,settleDate,))
-        else: 
-            yld = newton(bond_price_root,guess,tol=0.0001,maxiter=100,args=(p,self,settleDate,))
         
+        self.generate_cashflows(settleDate, workout)
+        
+        A = float(msrbDayCount(self.calcPrevCouponDate, settleDate))
+        B = float(self.daysInYear)
+        E = float(msrbDayCount(self.calcPrevCouponDate, self.calcNextCouponDate))
+        M = float(self.intFreq)
+        N = self.coupon_count()
+        R = float(self.coupon)
+        RV = float(workout['price'])
+        
+        newton_start = time.time()
+        yld = newton_solver_optimized(float(p), float(guess), RV, N, R, M, E, A, B, tol=0.0001, maxiter=100)
         newton_end = time.time()
-        newton_elapsed = (newton_end - newton_start) * 1_000 # convert to ms
+        newton_elapsed = (newton_end - newton_start) * 1_000
 
         key = f"{self.cusip}_newton_solver"
         _timing_data[key] = _timing_data.get(key, 0) + newton_elapsed
@@ -293,8 +292,51 @@ def getIntFreq(ifd):
         }
     return mapper.get(ifd,2.0)
 
+@njit
 def discountFactor(y,m,t):
     return 1.0/(1+y/m)**t
+
+@njit
+def bond_price_periodic_core(y, RV, N, R, M, E, A, B):
+    if N <= 1:
+        P = ((RV/100.0)+(R/M))/(1+((E-A)/E)*(y/M)) - (R*A/B)
+        P = P*100.0
+    else:
+        PV = 0.0
+        coupon_amount = 100.0*R/M
+        for k in range(1, N+1):
+            t = k-1+((E-A)/E)
+            df = 1.0/(1+y/M)**t
+            PV = PV + df*coupon_amount
+        t_principal = N-1+((E-A)/E)
+        principal_df = 1.0/(1+y/M)**t_principal
+        P = RV*principal_df + PV - (100.0*R*A/B)
+    return P
+
+@njit
+def newton_solver_optimized(target_price, initial_guess, RV, N, R, M, E, A, B, tol=1e-4, maxiter=100):
+    """Numba-optimized Newton solver for bond yield"""
+    y = initial_guess
+    epsilon = 1e-8
+    
+    for iteration in range(maxiter):
+        current_price = bond_price_periodic_core(y, RV, N, R, M, E, A, B)
+        f_val = current_price - target_price
+        
+        if abs(f_val) < tol:
+            return y
+        
+        price_plus = bond_price_periodic_core(y + epsilon, RV, N, R, M, E, A, B)
+        derivative = (price_plus - current_price) / epsilon
+        
+        if abs(derivative) < 1e-15:
+            return y
+        
+        # Newton step (no boundary constraints, like scipy)
+        step = f_val / derivative
+        y = y - step
+    
+    return y
 
 def msrbDayCount(startDate,endDate):
     D1 = 30 if (startDate.day==31) else startDate.day
