@@ -12,6 +12,7 @@ from dateutil.relativedelta import relativedelta
 import time
 import numpy as np
 from numba import njit
+from concurrent.futures import ThreadPoolExecutor
 
 _timing_data = {}
 
