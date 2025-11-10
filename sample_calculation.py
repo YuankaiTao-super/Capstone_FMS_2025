@@ -13,7 +13,6 @@ import numpy as np
 import gc
 from contextlib import contextmanager
 import muniBond
-from multiprocessing import Pool, cpu_count
 
 def warm_up_numba():
     """Pre-compile Numba with cusip warm-up"""
@@ -35,7 +34,6 @@ def process_psv_data():
     df_sample = df.sample(n=10_000, random_state=42)
     
     muniBond.clear_timing_data()
-
     warm_up_numba()
     muniBond.clear_timing_data()
 
