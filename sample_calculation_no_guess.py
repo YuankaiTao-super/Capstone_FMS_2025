@@ -3,7 +3,9 @@
 author: @yuankai
 created: 2024-10-10
 completed: In progress
-issue #3, #4
+issue #3,4,9
+this version does NOT use an initial guess from PSV data for YTW calculation
+real cusips from cleaned PSV data(cleaned with sample_cusip.csv) with warm-up function
 """
 import time
 import pandas as pd
@@ -12,18 +14,11 @@ import gc
 from contextlib import contextmanager
 import muniBond
 
-BOND = {}
-
-def get_bond(cusip):
-    if cusip not in BOND:
-        BOND[cusip] = muniBond.muniBond(cusip)
-    return BOND[cusip]
-
 def warm_up_numba():
     """Pre-compile Numba with cusip warm-up"""
     print("Warming up...")
     
-    warm_cusip = '762244KL4'
+    warm_cusip = '797299KR4'
     warm_bond = muniBond.muniBond(warm_cusip)
     _ = warm_bond.ytw(100.0)
 
@@ -33,10 +28,10 @@ def process_psv_data():
     """
     num of samples -> 10,000
     """
-    df = pd.read_csv('./temp/ice_cep_prices_20251002_cleaned.psv', sep='|')
+    df = pd.read_csv('./temp/ice_cep_prices_20251002_cleaned_01.psv', sep='|')
     print(len(df))
 
-    df_sample = df.sample(n=10_000, random_state=42)
+    df_sample = df.sample(n=10_000, random_state=123)
     
     muniBond.clear_timing_data()
 
@@ -50,6 +45,8 @@ def process_psv_data():
     ]
     
     print("begin to calc...")
+    
+    total_start_time = time.time()
     
     for idx, row in df_sample.iterrows():
 
@@ -66,7 +63,7 @@ def process_psv_data():
             price = int(bid_px)  # truncate decimal
             
             # create bond object
-            bond = get_bond(cusip)
+            bond = muniBond.muniBond(cusip)
 
             # calc time
             start_time = time.time()
@@ -113,9 +110,14 @@ def process_psv_data():
 
     results_df = pd.DataFrame(results)
     
+    # Calculate total processing time
+    total_end_time = time.time()
+    total_processing_time = total_end_time - total_start_time
+    
     print(f"\n===== SUMMARY =====")
     print(f"Bonds processed: {len(results_df)}")
-    print(f"Unique bonds cached: {len(BOND)}")
+    print(f"Total processing time: {total_processing_time:.2f}s")
+
     print(f"\nTotal Calculation Time:")
     print(f"  Mean: {results_df['calc_time_ms'].mean():.4f}ms")
     print(f"  Median: {results_df['calc_time_ms'].median():.4f}ms")

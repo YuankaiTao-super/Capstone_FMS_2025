@@ -319,7 +319,7 @@ def newton_solver_optimized(target_price, initial_guess, RV, N, R, M, E, A, B, t
     y = initial_guess
     epsilon = 1e-8
     
-    for iteration in range(maxiter):
+    for iter in range(maxiter):
         current_price = bond_price_periodic_core(y, RV, N, R, M, E, A, B)
         f_val = current_price - target_price
         
@@ -332,7 +332,6 @@ def newton_solver_optimized(target_price, initial_guess, RV, N, R, M, E, A, B, t
         if abs(derivative) < 1e-15:
             return y
         
-        # Newton step (no boundary constraints, like scipy)
         step = f_val / derivative
         y = y - step
     
