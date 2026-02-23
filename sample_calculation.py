@@ -71,8 +71,15 @@ def process_psv_data():
             calc_time = (end_time - start_time) * 1000  # -> ms
 
             timing_details = muniBond.get_cusip_timing(cusip)
+            
+            # Estimate coupon count (removed actual_coupon_count capture)
+            years_to_maturity = bond.effectiveMaturityDate.year - 2025
+            int_freq = bond.intFreq if bond.intFreq else 0
+            if int_freq > 0 and years_to_maturity >= 0:
+                estimated_coupons = int(years_to_maturity * int_freq) + 1
+            else:
+                estimated_coupons = 0
 
-            # result_cols
             result = {
                 'cusip': cusip,
                 'original_price': bid_px,
@@ -81,6 +88,7 @@ def process_psv_data():
                 'init_ms': timing_details['init_ms'],
                 'generate_cashflows_ms': timing_details['generate_cashflows_ms'],
                 'newton_solver_ms': timing_details['newton_solver_ms'],
+                'estimated_coupons': estimated_coupons,
                 'ytw': ytw
             }
             
@@ -134,6 +142,12 @@ def process_psv_data():
     print(f"  Median: {results_df['newton_solver_ms'].median():.4f}ms")
     print(f"  Max: {results_df['newton_solver_ms'].max():.4f}ms")
     print(f"  Min: {results_df['newton_solver_ms'].min():.4f}ms")
+
+    print(f"\nGenerate Cashflows Time:")
+    print(f"  Mean: {results_df['generate_cashflows_ms'].mean():.4f}ms")
+    print(f"  Median: {results_df['generate_cashflows_ms'].median():.4f}ms")
+    print(f"  Max: {results_df['generate_cashflows_ms'].max():.4f}ms")
+    print(f"  Min: {results_df['generate_cashflows_ms'].min():.4f}ms")
 
     # save timing files
     results_df.to_csv('./temp/ytw_calc_times.csv', index=False)

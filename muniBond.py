@@ -192,12 +192,7 @@ class muniBond:
         return msrbRoundPrice(100.0*P)
     
     def bond_price_periodic(self,y,workout,settleDate):
-        gen_cf_start = time.time()
         self.generate_cashflows(settleDate, workout)
-        gen_cf_end = time.time()
-        gen_cf_elapsed = (gen_cf_end - gen_cf_start) * 1_000
-        key = f"{self.cusip}_generate_cashflows"
-        _timing_data[key] = _timing_data.get(key, 0) + gen_cf_elapsed
 
         A = float(msrbDayCount(self.calcPrevCouponDate,settleDate))
         B = float(self.daysInYear)
@@ -232,7 +227,13 @@ class muniBond:
             else: 
                 settleDate = self.currentCalcSettleDate
         
+        # Time the generate_cashflows call
+        gen_cf_start = time.time()
         self.generate_cashflows(settleDate, workout)
+        gen_cf_end = time.time()
+        gen_cf_elapsed = (gen_cf_end - gen_cf_start) * 1_000
+        key = f"{self.cusip}_generate_cashflows"
+        _timing_data[key] = _timing_data.get(key, 0) + gen_cf_elapsed
         
         A = float(msrbDayCount(self.calcPrevCouponDate, settleDate))
         B = float(self.daysInYear)
@@ -322,20 +323,16 @@ def newton_solver_optimized(target_price, initial_guess, RV, N, R, M, E, A, B, t
     
     for iter in range(maxiter):
         current_price = bond_price_periodic_core(y, RV, N, R, M, E, A, B)
-        f_val = current_price - target_price
-        
+        f_val = current_price - target_price       
         if abs(f_val) < tol:
-            return y
-        
+            return y 
         price_plus = bond_price_periodic_core(y + epsilon, RV, N, R, M, E, A, B)
         derivative = (price_plus - current_price) / epsilon
-        
         if abs(derivative) < 1e-15:
             return y
         
         step = f_val / derivative
         y = y - step
-    
     return y
 
 def msrbDayCount(startDate,endDate):
